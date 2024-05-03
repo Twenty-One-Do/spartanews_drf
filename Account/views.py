@@ -12,19 +12,20 @@ class AccountView(APIView):
 
     permission_classes = [IsAuthenticated,]
 
-    def get(self, request, pk):
+    def get(self, request, username):
 
-        if request.user.id != pk:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        if request.user.username != username:
+            data = {"username" : "Does not match the requested Username."}
+            return Response(data, status=status.HTTP_401_UNAUTHORIZED)
 
-        user = get_object_or_404(User, id=pk)
+        user = get_object_or_404(User, username=username)
         serializer = UserSerializer(user)
 
         return Response(serializer.data)
 
-    def put(self, request, pk):
+    def put(self, request, username):
 
-        if request.user.id != pk:
+        if request.user.username != username:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
 
         user = request.user
@@ -42,9 +43,9 @@ def signup(request):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 @api_view(['PUT'])
-def change_password(request, pk):
+def change_password(request, username):
 
-    if not request.user.is_authenticated or request.user.id != pk:
+    if not request.user.is_authenticated or request.user.username != username:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     original_password = request.data.get('original_password')
@@ -57,7 +58,7 @@ def change_password(request, pk):
             {
                 'error': 'Invalid password',
             },
-            status=status.HTTP_403_FORBIDDEN
+            status=status.HTTP_401_UNAUTHORIZED
         )
 
     if new_password != new_password2:

@@ -26,12 +26,6 @@ class UserSerializer(serializers.ModelSerializer):
             'is_active',
         )
 
-    def validate(self, data):
-        print(data)
-        if "password" in data or "password2" in data:
-            raise serializers.ValidationError({"password": "해당 API에서 password는 수정 불가능합니다."})
-        return data
-
     def create(self, validated_data):
         user = User(
             email=validated_data['email'],
@@ -42,6 +36,8 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
+        if "password" in validated_data or "password2" in validated_data:
+            raise serializers.ValidationError({"password": "해당 API에서 password는 수정 불가능합니다."})
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

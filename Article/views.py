@@ -9,7 +9,57 @@ from django.core.mail import send_mail
 
 from SpartaNews import settings
 from .models import Article, Comment, Comment_Likes_Rel
-from .serializers import CommentSerializer
+from .serializers import ArticleSerializer, CommentSerializer
+
+class ArticleListView(APIView):
+
+    def get(self, request):
+        articles = Article.objects.all()
+        serializer = ArticleSerializer(articles, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        self.permission_classes = [IsAuthenticated] 
+        self.check_permissions(request)
+        #JSON으로 입력하는 데이터 받아오기
+        serializer = ArticleSerializer(data = request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(writer = request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class ArticleDetailView(APIView):
+
+    def get(self, request, pk):
+        article = get_object_or_404(Article, pk=pk)
+        serializer = ArticleSerializer(article)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        self.permission_classes = [IsAuthenticated] 
+        self.check_permissions(request)
+        article = get_object_or_404(Article, pk=pk)
+
+        if request.user != article.writer:
+            return Response(stats=status.HTTP_401_UNAUTHORIZED)
+        
+        serializer = ArticleSerializer(article, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+    def delete(self, request, pk):
+        self.permission_classes = [IsAuthenticated] 
+        self.check_permissions(request)
+        article = get_object_or_404(Article, pk=pk)
+
+        if request.user != article.writer:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        
+        article.delete()
+        data = {"delete": f"Article({pk}) is deleted."}
+        return Response(data, status=status.HTTP_204_NO_CONTENT)
+
 
 def send_alert(is_article, target, subject):
     target_email = target.writer.email
@@ -29,25 +79,6 @@ def send_alert(is_article, target, subject):
     to_email = [target_email]
     send_mail(subject, message, settings.EMAIL_HOST_USER, to_email)
 
-class ArticleListView(APIView):
-
-    def get(self, request):
-        pass
-
-    def post(self, request):
-        pass
-
-
-class ArticleDetailView(APIView):
-
-    def get(self, request, pk):
-        pass
-
-    def put(self, request, pk):
-        pass
-
-    def delete(self, request, pk):
-        pass
 
 class CommentListView(APIView):
 

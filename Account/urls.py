@@ -10,6 +10,6 @@ urlpatterns = [
     path('refresh/blacklist/', TokenBlacklistView.as_view(), name='index'),
 
     path('', views.signup),
-    path('<int:pk>', views.AccountView.as_view()),
-    path('<int:pk>/password', views.change_password),
+    path('<str:username>', views.AccountView.as_view()),
+    path('<str:username>/password', views.change_password),
 ]
