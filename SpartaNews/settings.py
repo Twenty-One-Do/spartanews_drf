@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = _SECRET_KEY
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     "43.201.72.215",
@@ -108,3 +108,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 EMAIL_HOST_USER = _EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = _EMAIL_HOST_PASSWORD
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
