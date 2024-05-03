@@ -110,8 +110,8 @@ def article_likes(request, pk):
 @api_view(['POST'])
 def comment_likes(request, pk):
 
-    if request.user.is_authenticated:
-        return Response(status=status.HTTP_403_FORBIDDEN)
+    if not request.user.is_authenticated:
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     comment = get_object_or_404(Comment, pk=pk)
     co_rel, create = Comment_Likes_Rel.objects.get_or_create(comment=comment, user=request.user)
