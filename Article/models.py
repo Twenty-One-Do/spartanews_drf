@@ -9,6 +9,7 @@ class Article(models.Model):
     type = models.CharField(max_length=20, choices=ARTICLE_TYPE)
     title = models.CharField(max_length=100)
     url = models.CharField(max_length=300)
+    writer = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     likes_num = models.PositiveIntegerField(default=0)
     comments_num = models.PositiveIntegerField(default=0)
@@ -20,14 +21,11 @@ class Comment(models.Model):
     content = models.TextField()
     article = models.ForeignKey(Article, on_delete=models.CASCADE)
     writer = models.ForeignKey(User, on_delete=models.CASCADE)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
     alert = models.BooleanField(default=False)
     likes_num = models.PositiveIntegerField(default=0)
     date_created = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
-
-class Comment_Rel(models.Model):
-    parent = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='child_comments')
-    child = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='parent_comments')
 
 class Likes_Rel(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='like_users')
