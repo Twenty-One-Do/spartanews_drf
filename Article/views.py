@@ -95,7 +95,7 @@ class CommentListView(APIView):
         serializer = CommentSerializer(data=request.data)
 
         if serializer.is_valid(raise_exception=True):
-            parent_comment_id = request.data.get('parent_comment_id')
+            parent_comment_id = request.data.get('parent')
             article = get_object_or_404(Article, pk=pk)
 
             if parent_comment_id:
