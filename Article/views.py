@@ -1,10 +1,33 @@
+from django.db.models import F
 from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import Article, Comment, Comment_Rel, Comment_Likes_Rel
+from django.core.mail import send_mail
+
+from SpartaNews import settings
+from .models import Article, Comment, Comment_Likes_Rel
 from .serializers import CommentSerializer
 
+def send_alert(is_article, target, subject):
+    target_email = target.writer.email
+    subject_username = subject.writer.username
+    subject_content = subject.content
+    if is_article:
+        target_title = target.title
+    else:
+        target_title = target.content
+    subject = f""" "{subject_username}"님께서 "{target_title}"에 답글을 달아주셨습니다. """
+    message = f""" 
+    "{target_title}"에 등록된 답글 
+    
+    - {subject_username}
+    "{subject_content}"
+    """
+    to_email = [target_email]
+    send_mail(subject, message, settings.EMAIL_HOST_USER, to_email)
 
 class ArticleListView(APIView):
 
@@ -35,24 +58,71 @@ class CommentListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, pk):
+        self.permission_classes = [IsAuthenticated]
+        self.check_permissions(request)
+
         serializer = CommentSerializer(data=request.data)
 
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
+            parent_comment_id = request.data.get('parent_comment_id')
             article = get_object_or_404(Article, pk=pk)
-            serializer.save(article=article, writer=request.user)
 
+            if parent_comment_id:
+                comment = get_object_or_404(Comment, pk=parent_comment_id)
+            else:
+                comment = None
+
+            registered_comment = serializer.save(article=article, writer=request.user, parent=comment)
+
+            if parent_comment_id:
+                send_alert(is_article=False, target=comment, subject=registered_comment)
+            else:
+                send_alert(is_article=True, target=article, subject=registered_comment)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class CommentDetailView(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def put(self, request, pk):
         comment = get_object_or_404(Comment, pk=pk)
         serializer = CommentSerializer(comment, data=request.data, partial=True)
 
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
 
     def delete(self, request, pk):
         comment = get_object_or_404(Comment, pk=pk)
 
         if comment.writer == request.user:
             comment.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+@api_view(['POST'])
+def article_likes(request, pk):
+    pass
+
+@api_view(['POST'])
+def comment_likes(request, pk):
+
+    if request.user.is_authenticated:
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    comment = get_object_or_404(Comment, pk=pk)
+    co_rel, create = Comment_Likes_Rel.objects.get_or_create(comment=comment, user=request.user)
+
+    if create:
+        comment.likes_num = F('likes_num') + 1
+    else:
+        comment.likes_num = F('likes_num') - 1
+        co_rel.delete()
+
+    comment.save()
+    comment.refresh_from_db()
+
+    return Response(status=status.HTTP_200_OK)

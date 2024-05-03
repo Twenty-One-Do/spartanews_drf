@@ -1,6 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
-from .config import _SECRET_KEY
+from .config import _SECRET_KEY, _EMAIL_HOST_USER, _EMAIL_HOST_PASSWORD
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -101,3 +101,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+EMAIL_HOST_USER = _EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = _EMAIL_HOST_PASSWORD
