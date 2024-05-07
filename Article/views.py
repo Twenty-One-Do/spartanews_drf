@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 
 from SpartaNews import settings
-from .models import Article, Comment, Comment_Likes_Rel
+from .models import Article, Likes_Rel, Comment, Comment_Likes_Rel
 from .serializers import ArticleSerializer, CommentSerializer
 
 class ArticleListView(APIView):
@@ -136,7 +136,22 @@ class CommentDetailView(APIView):
 
 @api_view(['POST'])
 def article_likes(request, pk):
-    pass
+    if not request.user.is_authenticated:
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+    article = get_object_or_404(Article, pk=pk)
+    ar_rel, create = Likes_Rel.objects.get_or_create(article=article, user=request.user)
+
+    if create:
+        article.likes_num = F('likes_num') + 1
+    else:
+        article.likes_num = F('likes_num') - 1
+        ar_rel.delete()
+
+    article.save()
+    article.refresh_from_db()
+
+    return Response(status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def comment_likes(request, pk):
