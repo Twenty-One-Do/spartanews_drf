@@ -5,11 +5,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from django.core.mail import send_mail
-
-from SpartaNews import settings
 from .models import Article, Likes_Rel, Comment, Comment_Likes_Rel
 from .serializers import ArticleSerializer, CommentSerializer
+from .tasks import send_alert
 
 class ArticleListView(APIView):
 
@@ -40,7 +38,7 @@ class ArticleDetailView(APIView):
         article = get_object_or_404(Article, pk=pk)
 
         if request.user != article.writer:
-            return Response(stats=status.HTTP_401_UNAUTHORIZED)
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
         
         serializer = ArticleSerializer(article, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
@@ -59,26 +57,6 @@ class ArticleDetailView(APIView):
         article.delete()
         data = {"delete": f"Article({pk}) is deleted."}
         return Response(data, status=status.HTTP_204_NO_CONTENT)
-
-
-def send_alert(is_article, target, subject):
-    target_email = target.writer.email
-    subject_username = subject.writer.username
-    subject_content = subject.content
-    if is_article:
-        target_title = target.title
-    else:
-        target_title = target.content
-    subject = f""" "{subject_username}"님께서 "{target_title}"에 답글을 달아주셨습니다. """
-    message = f""" 
-    "{target_title}"에 등록된 답글 
-    
-    - {subject_username}
-    "{subject_content}"
-    """
-    to_email = [target_email]
-    send_mail(subject, message, settings.EMAIL_HOST_USER, to_email)
-
 
 class CommentListView(APIView):
 
@@ -106,9 +84,15 @@ class CommentListView(APIView):
             registered_comment = serializer.save(article=article, writer=request.user, parent=comment)
 
             if parent_comment_id:
-                send_alert(is_article=False, target=comment, subject=registered_comment)
+                send_alert.delay(comment.content,
+                                 comment.writer.email,
+                                 registered_comment.writer.username,
+                                 registered_comment.content)
             else:
-                send_alert(is_article=True, target=article, subject=registered_comment)
+                send_alert.delay(article.title,
+                                 article.writer.email,
+                                 registered_comment.writer.username,
+                                 registered_comment.content)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
