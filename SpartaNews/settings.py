@@ -113,15 +113,15 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-CELERY_BROKER_URL = 'rediss://rediscache-fgskut.serverless.apn2.cache.amazonaws.com:6379/0'
-CELERY_RESULT_BACKEND = 'rediss://rediscache-fgskut.serverless.apn2.cache.amazonaws.com:6379/0'
+CELERY_BROKER_URL = 'redis://rediscache-fgskut.serverless.apn2.cache.amazonaws.com:6379/0'
+CELERY_RESULT_BACKEND = 'redis://rediscache-fgskut.serverless.apn2.cache.amazonaws.com:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "rediss://rediscache-fgskut.serverless.apn2.cache.amazonaws.com:6379",
+        "LOCATION": "redis://rediscache-fgskut.serverless.apn2.cache.amazonaws.com:6379",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
