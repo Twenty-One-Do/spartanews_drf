@@ -11,21 +11,28 @@ from SpartaNews import settings
 from .models import Article, Likes_Rel, Comment, Comment_Likes_Rel
 from .serializers import ArticleSerializer, CommentSerializer
 
+
 class ArticleListView(APIView):
 
     def get(self, request):
-        articles = Article.objects.all()
+        query = request.data.get('query')
+        if query is None:
+            articles = Article.objects.all()
+        else:
+            articles = Article.objects.filter(title__icontains=query)
         serializer = ArticleSerializer(articles, many=True)
+        print(serializer.data)
         return Response(serializer.data)
 
     def post(self, request):
-        self.permission_classes = [IsAuthenticated] 
+        self.permission_classes = [IsAuthenticated]
         self.check_permissions(request)
-        #JSON으로 입력하는 데이터 받아오기
-        serializer = ArticleSerializer(data = request.data)
+        # JSON으로 입력하는 데이터 받아오기
+        serializer = ArticleSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer.save(writer = request.user)
+            serializer.save(writer=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class ArticleDetailView(APIView):
 
@@ -35,27 +42,27 @@ class ArticleDetailView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
-        self.permission_classes = [IsAuthenticated] 
+        self.permission_classes = [IsAuthenticated]
         self.check_permissions(request)
         article = get_object_or_404(Article, pk=pk)
 
         if request.user != article.writer:
             return Response(stats=status.HTTP_401_UNAUTHORIZED)
-        
-        serializer = ArticleSerializer(article, data=request.data, partial=True)
+
+        serializer = ArticleSerializer(
+            article, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-
     def delete(self, request, pk):
-        self.permission_classes = [IsAuthenticated] 
+        self.permission_classes = [IsAuthenticated]
         self.check_permissions(request)
         article = get_object_or_404(Article, pk=pk)
 
         if request.user != article.writer:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
-        
+
         article.delete()
         data = {"delete": f"Article({pk}) is deleted."}
         return Response(data, status=status.HTTP_204_NO_CONTENT)
@@ -103,14 +110,18 @@ class CommentListView(APIView):
             else:
                 comment = None
 
-            registered_comment = serializer.save(article=article, writer=request.user, parent=comment)
+            registered_comment = serializer.save(
+                article=article, writer=request.user, parent=comment)
 
             if parent_comment_id:
-                send_alert(is_article=False, target=comment, subject=registered_comment)
+                send_alert(is_article=False, target=comment,
+                           subject=registered_comment)
             else:
-                send_alert(is_article=True, target=article, subject=registered_comment)
+                send_alert(is_article=True, target=article,
+                           subject=registered_comment)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class CommentDetailView(APIView):
 
@@ -118,7 +129,8 @@ class CommentDetailView(APIView):
 
     def put(self, request, pk):
         comment = get_object_or_404(Comment, pk=pk)
-        serializer = CommentSerializer(comment, data=request.data, partial=True)
+        serializer = CommentSerializer(
+            comment, data=request.data, partial=True)
 
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -160,7 +172,8 @@ def comment_likes(request, pk):
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     comment = get_object_or_404(Comment, pk=pk)
-    co_rel, create = Comment_Likes_Rel.objects.get_or_create(comment=comment, user=request.user)
+    co_rel, create = Comment_Likes_Rel.objects.get_or_create(
+        comment=comment, user=request.user)
 
     if create:
         comment.likes_num = F('likes_num') + 1
