@@ -1,4 +1,3 @@
-# summary/views.py
 from django.http import JsonResponse
 from .utils import fetch_webpage, parse_webpage
 from .summarization import generate_summary
