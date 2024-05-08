@@ -32,6 +32,12 @@ class ArticleListView(APIView):
         if serializer.is_valid(raise_exception=True):
             serializer.save(writer=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+class LatestArticleListView(APIView):
+    def get(self, request):
+        articles = Article.objects.order_by(F('date_created').desc(nulls_last=True))
+        serializer = ArticleSerializer(articles, many=True)
+        return Response(serializer.data)
 
 
 class ArticleDetailView(APIView):
