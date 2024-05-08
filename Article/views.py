@@ -9,16 +9,31 @@ from .models import Article, Likes_Rel, Comment, Comment_Likes_Rel
 from .serializers import ArticleSerializer, CommentSerializer
 from .tasks import send_alert
 
+order_query_dict = {
+    "latest" : "-date_created",
+    "old" : "date_created",
+    "popular" : "-likes_num",
+    "comment" : "-comments_num",
+}
 
 class ArticleListView(APIView):
 
     def get(self, request):
         query = request.data.get('query')
+
+        try:
+            order = request.data.get('order')
+            order_query = order_query_dict[order]
+        except KeyError:
+            data = {'message' : f"The key {order} did not exist"}
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
         if query is None:
-            articles = Article.objects.all()
+            articles = Article.objects.order_by(order_query)
         else:
-            articles = Article.objects.filter(title__icontains=query)
+            articles = Article.objects.filter(title__icontains=query).order_by(order_query)
         serializer = ArticleSerializer(articles, many=True)
+        print(serializer.data)
         return Response(serializer.data)
 
     def post(self, request):
@@ -90,6 +105,10 @@ class CommentListView(APIView):
 
             registered_comment = serializer.save(
                 article=article, writer=request.user, parent=comment)
+            
+            article.comments_num = F('comments_num') + 1
+            article.save()
+            article.refresh_from_db()
 
             if parent_comment_id:
                 send_alert.delay(comment.content,
@@ -122,10 +141,16 @@ class CommentDetailView(APIView):
 
     def delete(self, request, pk):
         comment = get_object_or_404(Comment, pk=pk)
+        article = comment.article
 
         if comment.writer == request.user:
             comment.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            article.comments_num = F('comments_num') - 1
+            article.save()
+            article.refresh_from_db()
+
+            data = {"delete": f"Comment({pk}) is deleted."}
+            return Response(data, status=status.HTTP_204_NO_CONTENT)
 
         return Response(status=status.HTTP_403_FORBIDDEN)
 
