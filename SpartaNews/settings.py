@@ -27,6 +27,7 @@ INSTALLED_APPS = [
 
     'Account',
     'Article',
+    'Summary',
 ]
 
 REST_FRAMEWORK = {
